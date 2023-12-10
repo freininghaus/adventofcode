@@ -1,4 +1,5 @@
-use std::collections::HashSet;
+use std::cmp::min;
+use std::collections::{HashMap, HashSet};
 use nom::bytes::complete::tag;
 use nom::character;
 use nom::multi::separated_list1;
@@ -28,13 +29,48 @@ fn part1(lines: &str) -> u32 {
         .sum()
 }
 
-fn part2(_lines: &str) -> u32 {
-    0
+fn part2(lines: &str) -> usize {
+    let cards: HashMap<usize, Card> = lines.lines()
+        .map(parse_card)
+        .map(|card| (card.id, card))
+        .collect();
+
+    let won_cards = cards.iter()
+        .map(|(_id, Card{id, winning_numbers, numbers_we_have})|
+            (id, numbers_we_have.iter()
+                .filter(|n| winning_numbers.contains(n))
+                .count())
+            )
+        .collect::<HashMap<_, _>>();
+
+    let min_card_id = *cards.keys().min().unwrap();
+    let max_card_id = *cards.keys().max().unwrap();
+    let reversed_card_ids = (min_card_id..=max_card_id).rev();
+
+    let total_cards_per_original_card = reversed_card_ids.into_iter()
+        .fold(
+            HashMap::new(),
+            |mut known, id| {
+                // Calculate the directly won cards
+                let direct_wins =
+                    id + 1..=id + min(
+                        max_card_id,
+                        *won_cards.get(&id).unwrap())   ;
+
+                // Calculate the total number of cards we have if we initially have one with the current id
+                let total = 1 + direct_wins.map(|i| known.get(&i).unwrap()).sum::<usize>();
+
+                known.insert(id, total);
+                known
+            }
+        );
+
+    total_cards_per_original_card.values().sum()
 }
 
 #[derive(Debug)]
 struct Card {
-    id: u32,
+    id: usize,
     winning_numbers: HashSet<u32>,
     numbers_we_have: Vec<u32>
 }
@@ -61,7 +97,7 @@ fn parse_card(line: &str) -> Card {
     let (_, _, id, _, _, winning_numbers, _, _, _, numbers_we_have) = parser(line).unwrap().1;
 
     Card {
-        id,
+        id: id as usize,
         winning_numbers: winning_numbers.into_iter().collect(),
         numbers_we_have
     }
