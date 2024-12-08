@@ -28,7 +28,7 @@ fn could_be_true_1(result: u64, numbers: &[u64]) -> bool {
     if numbers.len() == 1 {
         return result == numbers[0];
     }
-    
+
     let last = numbers[numbers.len() - 1];
     let rest = &numbers[0..(numbers.len() - 1)];
 
@@ -43,8 +43,46 @@ fn part1(lines: &str) -> u64 {
         .sum()
 }
 
-fn part2(_lines: &str) -> u64 {
-    0
+fn remove_suffix(n: u64, suffix: u64) -> Option<u64> {
+    let n_str = n.to_string();
+    let suffix_str = suffix.to_string();
+
+    if !n_str.ends_with(suffix_str.as_str()) {
+        return None;
+    }
+
+    if n_str.len() == suffix_str.len() {
+        return None;
+    }
+
+    Some(n_str[0..n_str.len() - suffix_str.len()].parse().unwrap())
+}
+
+fn could_be_true_2(result: u64, numbers: &[u64]) -> bool {
+    if numbers.len() == 1 {
+        return result == numbers[0];
+    }
+
+    let last = numbers[numbers.len() - 1];
+    let rest = &numbers[0..(numbers.len() - 1)];
+
+    (result >= last && crate::could_be_true_2(result - last, rest))
+        || (result % last == 0 && crate::could_be_true_2(result / last, rest))
+        ||
+        {
+            if let Some(new_result) = remove_suffix(result, last) {
+                crate::could_be_true_2(new_result, rest)
+            } else {
+                false
+            }
+        }
+}
+
+fn part2(lines: &str) -> u64 {
+    parse(lines).iter()
+        .filter(|(result, numbers)| could_be_true_2(*result, numbers))
+        .map(|(result, _)| result)
+        .sum()
 }
 
 #[cfg(test)]
@@ -68,6 +106,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(42, part2(TEST_INPUT));
+        assert_eq!(11387, part2(TEST_INPUT));
     }
 }
