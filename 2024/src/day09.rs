@@ -90,20 +90,11 @@ fn part2(data: &str) -> usize {
         .collect();
 
     for (file_start_index, file_size) in files_to_move.iter().rev() {
-        let mut target_span: Option<(usize, usize)> = None;
-
-        for (free_span_start_index, free_span_size) in free_spans.iter() {
-            if free_span_start_index > file_start_index {
-                // we only move left
-                break;
-            }
-
-            if free_span_size >= file_size {
-                // found the first free span to the left which is large enough
-                target_span = Some((*free_span_start_index, *free_span_size));
-                break;
-            }
-        }
+        let target_span = free_spans.iter()
+            .map(|(start_index, span_size)| (*start_index, *span_size))
+            .take_while(|(start_index, _)| start_index < file_start_index)
+            .filter(|(_, span_size)| span_size >= file_size)
+            .next();
 
         if let Some((target_span_start_index, target_span_size)) = target_span {
             // move file
