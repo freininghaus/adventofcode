@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use itertools::Itertools;
 
 fn input() -> String {
@@ -32,6 +33,14 @@ fn parse(data: &str) -> Vec<Option<usize>> {
         .collect()
 }
 
+fn checksum(disk_map: &[Option<usize>]) -> usize {
+    disk_map.iter().enumerate()
+        .map(|(index, item)| {
+            item.unwrap_or(0) * index
+        })
+        .sum()
+}
+
 fn part1(data: &str) -> usize {
     let mut disk_map = parse(data);
 
@@ -48,15 +57,86 @@ fn part1(data: &str) -> usize {
         index += 1;
     }
 
-    disk_map.iter().enumerate()
-        .map(|(index, item)| {
-            item.unwrap_or(0) * index
-        })
-        .sum()
+    checksum(&disk_map)
 }
 
-fn part2(data: &str) -> u32 {
-    0
+fn part2(data: &str) -> usize {
+    let mut disk_map = parse(data);
+
+    // (start index, length, common value)
+    let spans: Vec<(usize, usize, Option<usize>)> = disk_map.iter()
+        .enumerate()
+        .chunk_by(|(_index, value)| *value)
+        .into_iter()
+        .map(|(key, chunk)| (chunk.count(), key))
+        .scan(0, |index, (chunk_size, value)| {
+            let start_index = *index;
+            *index += chunk_size;
+
+            Some((start_index, chunk_size, *value))
+        })
+        .collect();
+
+    // (start index, length) of free spans
+    let mut free_spans: BTreeMap<usize, usize> = spans.iter()
+        .filter(|(_, _, value)| value.is_none())
+        .map(|(start_index, chunk_size, _)| (*start_index, *chunk_size))
+        .collect();
+
+    // (start index, length) of files to move
+    let files_to_move: BTreeMap<usize, usize> = spans.iter()
+        .filter(|(_, _, value)| value.is_some())
+        .map(|(start_index, chunk_size, _)| (*start_index, *chunk_size))
+        .collect();
+
+    for (file_start_index, file_size) in files_to_move.iter().rev() {
+        let mut target_span: Option<(usize, usize)> = None;
+
+        for (free_span_start_index, free_span_size) in free_spans.iter() {
+            if free_span_start_index > file_start_index {
+                // we only move left
+                break;
+            }
+
+            if free_span_size >= file_size {
+                // found the first free span to the left which is large enough
+                target_span = Some((*free_span_start_index, *free_span_size));
+                break;
+            }
+        }
+
+        if let Some((target_span_start_index, target_span_size)) = target_span {
+            // move file
+            for i in 0..*file_size {
+                disk_map[target_span_start_index + i] = disk_map[file_start_index + i];
+                disk_map[file_start_index + i] = None;
+            }
+
+            // update free spans
+            free_spans.remove(&target_span_start_index);
+            if target_span_size > *file_size {
+                // free span has not been used completely
+                free_spans.insert(
+                    target_span_start_index + *file_size,
+                    target_span_size - *file_size
+                );
+            }
+        }
+
+    }
+
+    checksum(&disk_map)
+}
+
+fn print_disk_map(disk_map: &[Option<usize>]) {
+    for value in disk_map {
+        match value {
+            Some(value) => print!("{}", value),
+            None => print!(".")
+        }
+    }
+
+    println!();
 }
 
 #[cfg(test)]
@@ -97,6 +177,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(42, part2(TEST_INPUT));
+        assert_eq!(2858, part2(TEST_INPUT));
     }
 }
