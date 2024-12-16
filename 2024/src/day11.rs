@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use itertools::Itertools;
+
 fn input() -> String {
     std::fs::read_to_string("input/day11.txt")
         .expect("Could not read file")
@@ -46,8 +49,31 @@ fn part1(data: &str) -> usize {
     stones.len()
 }
 
+fn blink_groups(stone_counts: &HashMap<u64, usize>) -> HashMap<u64, usize> {
+    let mut result: HashMap<u64, usize> = HashMap::new();
+
+    for (stone, count) in stone_counts {
+        for new_stone in single_stone_blink(stone) {
+            *result.entry(new_stone).or_insert(0) += count;
+        }
+    }
+
+    result
+}
+
 fn part2(data: &str) -> usize {
-    0
+    let mut stone_counts: HashMap<u64, usize> = parse(data).iter()
+        .sorted()
+        .chunk_by(|x| **x)
+        .into_iter()
+        .map(|(stone, chunk)| (stone, chunk.count()))
+        .collect();
+
+    for _ in 0..75 {
+        stone_counts = blink_groups(&stone_counts);
+    }
+
+    stone_counts.values().sum()
 }
 
 #[cfg(test)]
@@ -78,6 +104,7 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(42, part2(TEST_INPUT));
+        // no given result for part 2 with test input
+        //assert_eq!(42, part2(TEST_INPUT));
     }
 }
