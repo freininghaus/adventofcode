@@ -17,22 +17,24 @@ fn parse(data: &str) -> Vec<u64> {
         .collect()
 }
 
+fn single_stone_blink(stone: &u64) -> Vec<u64> {
+    if *stone == 0 {
+        return vec![1];
+    }
+
+    let stone_str = stone.to_string();
+    if stone_str.bytes().count() % 2 == 0 {
+        let half_len = stone_str.len() / 2;
+        return vec![stone_str[..half_len].parse().unwrap(),
+                    stone_str[half_len..].parse().unwrap()];
+    }
+
+    vec![stone * 2024]
+}
+
 fn blink(stones: &Vec<u64>) -> Vec<u64> {
     stones.iter()
-        .flat_map(|stone| {
-            if *stone == 0 {
-                return vec![1];
-            }
-
-            let stone_str = stone.to_string();
-            if stone_str.bytes().count() % 2 == 0 {
-                let half_len = stone_str.len() / 2;
-                return vec![stone_str[..half_len].parse().unwrap(),
-                            stone_str[half_len..].parse().unwrap()];
-            }
-
-            vec![stone * 2024]
-        })
+        .flat_map(single_stone_blink)
         .collect()
 }
 
