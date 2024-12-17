@@ -10,11 +10,11 @@ fn main() {
     println!("Part 2: {}", part2(&data));
 }
 
-fn part1(_lines: &str) -> u32 {
+fn part1(data: &str) -> usize {
     0
 }
 
-fn part2(_lines: &str) -> u32 {
+fn part2(data: &str) -> usize {
     0
 }
 
