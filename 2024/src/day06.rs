@@ -13,7 +13,7 @@ fn main() {
     println!("Part 2: {}", part2(&data));
 }
 
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone, Copy)]
 enum Direction {
     Up,
     Down,
@@ -123,8 +123,91 @@ fn part1(lines: &str) -> usize {
         .len()
 }
 
-fn part2(_lines: &str) -> u32 {
-    0
+#[derive(Clone)]
+struct Map<'a> {
+    width: i32,
+    height: i32,
+    obstacles: &'a HashSet<(i32, i32)>,
+    new_obstacle: Option<(i32, i32)>
+}
+
+fn single_step(map: &Map, pos: (i32, i32), direction: Direction) -> Option<((i32, i32), Direction)> {
+    let (x, y) = pos;
+
+    if x < 0 || y < 0 || x == map.width || y == map.height {
+        // position is outside the grid
+        return None;
+    }
+
+    let new_pos = pos + &direction;
+
+    if map.obstacles.contains(&new_pos)
+        || map.new_obstacle.map(|o| o == new_pos) == Some(true) {
+        // obstacle at new position -> stay at current position and turn right
+        Some((pos, direction.turn_right()))
+    } else {
+        // update position
+        Some((new_pos, direction))
+    }
+}
+
+fn visited_positions(map: &Map, mut pos: (i32, i32), mut direction: Direction) -> Vec<(i32, i32)> {
+    let initial_position = pos;
+
+    from_fn(|| {
+        let (new_pos, new_direction) = single_step(map, pos, direction)?;
+        pos = new_pos;
+        direction = new_direction;
+        Some(pos)
+    })
+        .filter(|&p| p != initial_position)
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .collect()
+}
+
+fn stuck_in_loop(map: &Map, mut pos: (i32, i32), mut direction: Direction) -> bool {
+    let mut seen_positions: HashSet<((i32, i32), Direction)> = HashSet::new();
+
+    loop {
+        let Some((new_pos, new_direction)) = single_step(map, pos, direction) else {
+            // we have moved out of the map
+            return false;
+        };
+
+        if seen_positions.contains(&(new_pos, new_direction)) {
+            return true;
+        }
+
+        seen_positions.insert((new_pos, new_direction));
+
+        pos = new_pos;
+        direction = new_direction;
+    }
+}
+
+fn part2(lines: &str) -> usize {
+    let (width, height) = parse_dimensions(lines);
+    let obstacles = parse_obstacles(lines);
+    let (initial_pos, initial_direction) = parse_initial_state(lines);
+
+    let map = Map {
+        width: width,
+        height: height,
+        obstacles: &obstacles,
+        new_obstacle: None
+    };
+
+    let candidates = visited_positions(&map, initial_pos, initial_direction);
+
+    candidates.iter()
+        .map(|candidate| {
+            let mut new_map = map.clone();
+            new_map.new_obstacle = Some(*candidate);
+            stuck_in_loop(&new_map, initial_pos, initial_direction)
+        })
+        .filter(|is_stuck| *is_stuck)
+        .count()
 }
 
 #[cfg(test)]
@@ -149,6 +232,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(42, part2(TEST_INPUT));
+        assert_eq!(6, part2(TEST_INPUT));
     }
 }
