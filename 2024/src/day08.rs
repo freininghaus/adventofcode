@@ -59,8 +59,50 @@ fn part1(data: &str) -> usize {
         .len()
 }
 
+fn gcd(a: usize, b: usize) -> usize {
+    if b == 0 {
+        a
+    } else {
+        gcd(b, a % b)
+    }
+}
+
 fn part2(data: &str) -> usize {
-    0
+    let (width, height) = dimensions(data);
+    let antennas = parse(data);
+
+    antennas.iter()
+        .flat_map(|(_c, points)| {
+            (0..points.len())
+                .flat_map(move |i| (i+1..points.len())
+                    .flat_map(move |j| {
+                        let (x1, y1) = points[i];
+                        let (x2, y2) = points[j];
+
+                        // vector pointing from (x1, y1) to (x2, y2)
+                        let dx = x2 - x1;
+                        let dy = y2 - y1;
+
+                        // normalize vector
+                        let g = gcd(dx.abs() as usize, dy.abs() as usize) as i32;
+                        let dx = dx / g;
+                        let dy = dy / g;
+
+                        // go from each point towards the edge of the map in discrete steps
+                        vec![((x2, y2), (dx, dy)), ((x1, y1), (-dx, -dy))].iter()
+                            .flat_map(
+                                move |((x, y), (dx, dy))|
+                                    (0..)
+                                        .map(move |c| (x + c * dx, y + c * dy))
+                                        .take_while(|(x, y)| 0 <= *x && *x < width && 0 <= *y && *y < height)
+                                        .collect::<Vec<_>>()  // TODO: does not compile without collecting
+                            )
+                            .collect::<Vec<_>>()  // TODO: does not compile without collecting
+                    }))
+        })
+        .filter(|(x, y)| 0 <= *x && *x < width && 0 <= *y && *y < height)
+        .collect::<HashSet<_>>()
+        .len()
 }
 
 #[cfg(test)]
@@ -88,6 +130,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(42, part2(TEST_INPUT));
+        assert_eq!(34, part2(TEST_INPUT));
     }
 }
