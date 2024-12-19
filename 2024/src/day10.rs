@@ -21,6 +21,18 @@ fn parse(data: &str) -> Vec<Vec<u8>> {
         .collect()
 }
 
+fn trailheads(map: &Vec<Vec<u8>>) -> impl Iterator<Item=(usize, usize)> + use<'_> {
+    map.iter()
+        .enumerate()
+        .flat_map(
+            |(y, row)|
+                row.iter()
+                    .enumerate()
+                    .filter(|(_, height)| height == &&0)
+                    .map(move |(x, _)| (x, y))
+        )
+}
+
 fn neighbors(map: &Vec<Vec<u8>>, (x, y): (usize, usize)) -> Vec<(usize, usize)> {
     let width = map[0].len();
     let height = map.len();
@@ -53,15 +65,9 @@ fn reachable_9_height_positions(map: &Vec<Vec<u8>>, (x, y): (usize, usize)) -> H
 fn part1(data: &str) -> usize {
     let map = parse(&data);
     let map_ref = &map;
-    map.iter()
-        .enumerate()
-        .flat_map(
-            |(y, row)|
-                row.iter()
-                    .enumerate()
-                    .filter(|(_, height)| height == &&0)
-                    .map(move |(x, _)| reachable_9_height_positions(map_ref, (x, y)).len())
-        )
+
+    trailheads(&map)
+        .map(|pos| reachable_9_height_positions(map_ref, pos).len())
         .sum()
 }
 
