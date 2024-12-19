@@ -70,8 +70,25 @@ fn part1(data: &str) -> usize {
         .sum()
 }
 
+fn distict_trails_from(map: &Vec<Vec<u8>>, (x, y): (usize, usize)) -> usize {
+    let height = map[y][x];
+
+    if height == 9 {
+        return 1;
+    }
+
+    neighbors(map, (x, y)).iter()
+        .filter(|&&(x, y)| map[y][x] == height + 1)
+        .map(|&(x, y)| distict_trails_from(&map, (x, y)))
+        .sum()
+}
+
 fn part2(data: &str) -> usize {
-    0
+    let map = parse(&data);
+
+    trailheads(&map)
+        .map(|pos| distict_trails_from(&map, pos))
+        .sum()
 }
 
 #[cfg(test)]
@@ -94,6 +111,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(42, part2(TEST_INPUT));
+        assert_eq!(81, part2(TEST_INPUT));
     }
 }
