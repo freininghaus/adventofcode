@@ -64,10 +64,9 @@ fn reachable_9_height_positions(map: &Vec<Vec<u8>>, (x, y): (usize, usize)) -> H
 
 fn part1(data: &str) -> usize {
     let map = parse(&data);
-    let map_ref = &map;
 
     trailheads(&map)
-        .map(|pos| reachable_9_height_positions(map_ref, pos).len())
+        .map(|pos| reachable_9_height_positions(&map, pos).len())
         .sum()
 }
 
