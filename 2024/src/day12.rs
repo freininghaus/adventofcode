@@ -41,7 +41,7 @@ fn parse(data: &str) -> Vec<(char, HashSet<(usize, usize)>)> {
                 continue;
             };
 
-            let mut plot: HashSet<(usize, usize)> = HashSet::new();
+            let mut region: HashSet<(usize, usize)> = HashSet::new();
             let mut to_do = vec![(x, y)];
 
             // Note that process() cannot extend to_do itself because capturing to_do would be a
@@ -51,7 +51,7 @@ fn parse(data: &str) -> Vec<(char, HashSet<(usize, usize)>)> {
                 // function for determining the perimeter. With 0-based indexing, the cell at (0, 0
                 // would have a neighbor at, e.g., (-1, 0), which is outside the range of usize.
                 // We could use signed integers instead, but then we would need type casts elsewhere.
-                plot.insert((x + 1, y + 1));
+                region.insert((x + 1, y + 1));
                 neighbors((x, y))
                     .into_iter()
                     .filter(
@@ -71,11 +71,11 @@ fn parse(data: &str) -> Vec<(char, HashSet<(usize, usize)>)> {
             };
 
             while let Some((x, y)) = to_do.pop() {
-                let new_cells_in_plot = process((x, y));
-                to_do.extend(new_cells_in_plot);
+                let new_cells_in_region = process((x, y));
+                to_do.extend(new_cells_in_region);
             }
 
-            result.push((c, plot));
+            result.push((c, region));
         }
     }
 
@@ -83,15 +83,15 @@ fn parse(data: &str) -> Vec<(char, HashSet<(usize, usize)>)> {
 }
 
 fn part1(data: &str) -> usize {
-    let plots = parse(data);
+    let regions = parse(data);
 
-    plots.iter()
-        .map(|(_c, plot)| {
-            let area = plot.len();
-            let perimeter: usize = plot.iter()
+    regions.iter()
+        .map(|(_c, region)| {
+            let area = region.len();
+            let perimeter: usize = region.iter()
                 .map(|(x, y)|
                     neighbors((*x, *y)).into_iter()
-                        .filter(|neighbor| !plot.contains(neighbor))
+                        .filter(|neighbor| !region.contains(neighbor))
                         .count()
                 )
                 .sum();
