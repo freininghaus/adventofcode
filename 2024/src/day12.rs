@@ -12,28 +12,16 @@ fn main() {
     println!("Part 2: {}", part2(&data));
 }
 
-fn neighbors((x, y): (usize, usize)) -> Vec<(usize, usize)> {
-    let mut result = Vec::new();
-
-    if x > 0 {
-        result.push((x - 1, y));
-    }
-    if y > 0 {
-        result.push((x, y - 1));
-    }
-
-    result.push((x + 1, y));
-    result.push((x, y + 1));
-
-    result
+fn neighbors((x, y): (i32, i32)) -> Vec<(i32, i32)> {
+    vec![(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)]
 }
 
-fn parse(data: &str) -> Vec<(char, HashSet<(usize, usize)>)> {
+fn parse(data: &str) -> Vec<(char, HashSet<(i32, i32)>)> {
     let mut map: Vec<Vec<Option<char>>> = data.lines()
         .map(|line| line.trim().chars().map(|c| Some(c)).collect())
         .collect();
 
-    let mut result: Vec<(char, HashSet<(usize, usize)>)> = Vec::new();
+    let mut result: Vec<(char, HashSet<(i32, i32)>)> = Vec::new();
 
     for y in 0..map.len() {
         for x in 0..map[y].len() {
@@ -41,26 +29,31 @@ fn parse(data: &str) -> Vec<(char, HashSet<(usize, usize)>)> {
                 continue;
             };
 
-            let mut region: HashSet<(usize, usize)> = HashSet::new();
-            let mut to_do = vec![(x, y)];
+            // We work with signed integer coordinates, even if they are all negative. The benefit
+            // is that we do not have to check if a number is positive if we subtract one to
+            // determine the coordinates of a potential neighbor.
+            let mut region: HashSet<(i32, i32)> = HashSet::new();
+            let mut to_do = vec![(x as i32, y as i32)];
 
             // Note that process() cannot extend to_do itself because capturing to_do would be a
             // second mutable borrow in addition to the call to to_do.pop below.
-            let mut process = |(x, y): (usize, usize)| -> Vec<(usize, usize)> {
-                // We add 1 to the x and y coordinates such that we can re-use the neighbors()
-                // function for determining the perimeter. With 0-based indexing, the cell at (0, 0
-                // would have a neighbor at, e.g., (-1, 0), which is outside the range of usize.
-                // We could use signed integers instead, but then we would need type casts elsewhere.
-                region.insert((x + 1, y + 1));
+            let mut process = |(x, y): (i32, i32)| -> Vec<(i32, i32)> {
+                // Add (x, y) to the current region, and add all its neighbors with the same letter
+                // to the 'to do' list.
+                region.insert((x, y));
                 neighbors((x, y))
                     .into_iter()
                     .filter(
                         |&(x, y)| {
-                            let Some(row) = map.get_mut(y) else {
+                            if x < 0 || y < 0 {
+                                return false;
+                            }
+
+                            let Some(row) = map.get_mut(y as usize) else {
                                 return false;
                             };
 
-                            let Some(cell) = row.get_mut(x) else {
+                            let Some(cell) = row.get_mut(x as usize) else {
                                 return false;
                             };
 
