@@ -31,23 +31,26 @@ fn parse(data: &str) -> Vec<((i32, i32), (i32, i32))> {
         .collect()
 }
 
+fn evolve(robot: &((i32, i32), (i32, i32)), width: usize, height: usize, seconds: i32) -> (i32, i32) {
+    let ((x0, y0), (vx, vy)) = robot;
+
+    let (x, y) = (
+        (x0 + seconds * vx) % (width as i32),
+        (y0 + seconds * vy) % (height as i32)
+    );
+
+    (
+        if x < 0 { x + width as i32 } else { x },
+        if y < 0 { y + height as i32 } else { y }
+    )
+}
+
 fn part1_impl(width: usize, height: usize, seconds: i32, data: &str) -> usize {
     let x_middle = (width / 2) as i32;
     let y_middle = (height / 2) as i32;
 
     let robots_in_quadrant = parse(data).into_iter()
-        .map(
-            |((x0, y0), (vx, vy))|
-                ((x0 + seconds * vx) % (width as i32), (y0 + seconds * vy) % (height as i32))
-        )
-        .map(
-            |(x, y)|
-                // Note that a % b always has the same sign as a.
-                (
-                    if x < 0 { x + width as i32 } else { x },
-                    if y < 0 { y + height as i32 } else { y }
-                )
-        )
+        .map(|robot| evolve(&robot, width, height, seconds))
         .map(
             |(x, y)|
                 ((x - x_middle).signum(), (y - y_middle).signum())
