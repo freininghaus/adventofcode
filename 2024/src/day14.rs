@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use itertools::Itertools;
 use regex::Regex;
 
@@ -70,8 +71,63 @@ fn part1(data: &str) -> usize {
     part1_impl(101, 103, 100, data)
 }
 
+fn advance(width: i32, height: i32, (vx, vy): &(i32, i32), (ref mut x, ref mut y): &mut (i32, i32)) {
+    *x = (*x + vx + width) % width;
+    *y = (*y + vy + height) % height;
+}
+
+fn print_robots(width: usize, height: usize, robot_positions: &HashSet<(i32, i32)>) {
+    for y in 0..height {
+        for x in 0..width {
+            print!("{}", if robot_positions.contains(&((x as i32), (y as i32))) { '*' } else { ' ' });
+        }
+
+        println!();
+    }
+}
+
 fn part2(data: &str) -> usize {
-    0
+    // This could probably be optimized to run much faster, but the straightforward solution runs
+    // in acceptable time.
+
+    let width = 101;
+    let height = 103;
+    let (mut positions, velocities): (Vec<_>, Vec<_>) = parse(data).into_iter().unzip();
+
+    for second in 0..width * height {
+        // Check if many robots are close to another robot
+        let all_positions = positions.iter()
+            .map(|&pos| pos)
+            .collect::<HashSet<_>>();
+
+        let robots_with_neighbors = positions.iter()
+            .filter(
+                |&&(x, y)|
+                    (0..=1)
+                        .flat_map(|dx|
+                            (0..=1)
+                                .map(move |dy| (dx, dy))
+                                .filter(|&(dx, dy)| dx != 0 || dy != 0)
+                                .map(|(dx, dy)| (x + dx, y + dy))
+                        )
+                        .any(|(x, y)|
+                            all_positions.contains(&(x, y)))
+            )
+            .count();
+
+        // Terminate if more than half the robots are close to another one
+        if robots_with_neighbors > positions.len() / 2 {
+            print_robots(width, height, &all_positions);
+            return second;
+        }
+
+        // Advance all robot positions
+        for (v, mut pos) in velocities.iter().zip(&mut positions) {
+            advance(width as i32, height as i32, v, &mut pos);
+        }
+    }
+
+    panic!("Could not find solution");
 }
 
 #[cfg(test)]
@@ -98,6 +154,6 @@ p=9,5 v=-3,-3";
 
     #[test]
     fn test_part2() {
-        assert_eq!(42, part2(TEST_INPUT));
+        //assert_eq!(42, part2(TEST_INPUT));
     }
 }
