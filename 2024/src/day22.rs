@@ -1,3 +1,6 @@
+use std::collections::hash_map::Entry::{Occupied, Vacant};
+use std::collections::HashMap;
+
 fn input() -> String {
     std::fs::read_to_string("input/day22.txt")
         .expect("Could not read file")
@@ -40,8 +43,53 @@ fn part1(data: &str) -> u64 {
         .sum()
 }
 
-fn part2(data: &str) -> usize {
-    0
+// Note that we model the sequence of four price changes with a 32-bit int. Each byte represents an
+// item in the price change sequence, so shifting left by 8 bits discards one item and creates some
+// space for the next one.
+// The byte value for a price change d between -9 and 9 is 100 + d.
+//
+// The result is a map where the four most recent price changes in this encoded form are the keys,
+// and the first number of bananas that corresponds to this price change sequence is the value.
+fn bananas_per_price_change_sequence(initial_secret: u64) -> HashMap<u32, u64> {
+    let mut secret = initial_secret;
+    let mut bananas = secret % 10;
+    let mut encoded_recent_changes: u32 = 0;
+    let mut result: HashMap<u32, u64> = HashMap::new();
+
+    for step in 0..=2000 {
+        if step >= 4 && !result.contains_key(&encoded_recent_changes) {
+            result.insert(encoded_recent_changes, bananas);
+        }
+
+        secret = evolve_secret_number(secret);
+        let new_bananas = secret % 10;
+
+        encoded_recent_changes <<= 8;
+        encoded_recent_changes |= (100 + new_bananas - bananas) as u32;
+
+        bananas = new_bananas;
+    }
+
+    result
+}
+
+fn part2(data: &str) -> u64 {
+    *parse(data).into_iter()
+        // Accumulate the number of bananas per four price changes
+        .fold(HashMap::new(),
+              |mut acc: HashMap<u32, u64>, initial_secret| {
+                  for (price_change_sequence, bananas) in bananas_per_price_change_sequence(initial_secret) {
+                     match acc.entry(price_change_sequence) {
+                         Vacant(entry) => { entry.insert(bananas); }
+                         Occupied(mut entry) => *entry.get_mut() += bananas
+                     }
+                  }
+
+                  acc
+              }
+        )
+        .values()
+        .max().unwrap()
 }
 
 #[cfg(test)]
@@ -73,8 +121,13 @@ mod tests {
         assert_eq!(37327623, part1(TEST_INPUT));
     }
 
+    const TEST_INPUT2: &str = "1
+2
+3
+2024";
+
     #[test]
     fn test_part2() {
-        assert_eq!(42, part2(TEST_INPUT));
+        assert_eq!(23, part2(TEST_INPUT2));
     }
 }
