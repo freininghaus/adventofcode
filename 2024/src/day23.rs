@@ -63,8 +63,56 @@ fn part1(data: &str) -> usize {
     result
 }
 
-fn part2(data: &str) -> usize {
-    0
+fn find_large_networks<F: FnMut(&Vec<String>) -> ()>(
+    connections: &HashMap<String, HashSet<String>>,
+    candidates: &HashSet<String>,
+    network_start: &mut Vec<String>,
+    consumer: &mut F
+) {
+    if candidates.is_empty() {
+        // Cannot grow the network any more
+        consumer(network_start);
+    }
+
+    // Grow the network by every possible computer and continue to find further ways to grow it
+    for computer in candidates {
+        network_start.push(computer.clone());
+
+        // We start with the previous set of candidates, i.e. the computers which are connected to
+        // each computer in network_start
+        let new_candidates: HashSet<String> = candidates.iter()
+            // New candidates must be connected to the chosen computer
+            .filter(|next_computer| connections[computer].contains(*next_computer))
+            // To avoid visiting the same network multiple times, we enforce that computers are
+            // sorted in ascending order by name
+            .filter(|next_computer| *next_computer > computer)
+            .cloned()
+            .collect();
+
+        find_large_networks(connections, &new_candidates, network_start, consumer);
+
+        network_start.pop();
+    }
+}
+
+fn part2(data: &str) -> String {
+    let connections = parse(data);
+    let all_computers: HashSet<String> = connections.keys().cloned().collect();
+
+    let mut large_networks: Vec<Vec<String>> = Vec::new();
+    let mut network: Vec<String> = Vec::new();
+
+    find_large_networks(
+        &connections,
+        &all_computers,
+        &mut network,
+        &mut |large_network: &Vec<String>| large_networks.push(large_network.clone())
+    );
+
+    large_networks.into_iter()
+        .max_by_key(|l| l.len())
+        .unwrap()
+        .iter().join(",")
 }
 
 #[cfg(test)]
@@ -111,6 +159,6 @@ td-yn";
 
     #[test]
     fn test_part2() {
-        assert_eq!(42, part2(TEST_INPUT));
+        assert_eq!("co,de,ka,ta", part2(TEST_INPUT));
     }
 }
