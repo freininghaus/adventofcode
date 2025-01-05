@@ -43,7 +43,7 @@ fn parse(data: &str) -> Vec<ClawMachine> {
         .collect()
 }
 
-fn tokens(machine: &ClawMachine) -> Option<i64> {
+fn tokens_brute_force(machine: &ClawMachine) -> Option<i64> {
     // We could figure out how to combine the target coordinates using buttons A and B in better
     // ways, but the brute force approach is fast enough.
     (0..=100)
@@ -55,19 +55,73 @@ fn tokens(machine: &ClawMachine) -> Option<i64> {
 
             (0..=100)
                 .filter(move |a| remainder.0 == a * machine.button_a.0 && remainder.1 == a * machine.button_a.1)
-                .map(move |a| 3 * a + b)
+                .map(move |a| {
+                    3 * a + b
+                })
         })
         .min()
+
 }
 
 fn part1(data: &str) -> i64 {
     parse(data).iter()
-        .filter_map(tokens)
+        .filter_map(tokens_brute_force)
         .sum()
 }
 
-fn part2(data: &str) -> usize {
-    0
+// Just for unit testing
+fn part1_efficient(data: &str) -> i64 {
+    parse(data).into_iter()
+        .filter_map(tokens_efficient)
+        .sum()
+}
+
+// For part 2, we have to do better.
+// n_a * a_x + n_b * b_x = p_x  | * a_y
+// n_a * a_y + n_b * b_y = p_y  | * (-a_x)
+//
+// n_b * (a_y * b_x - a_x * b_y) = a_y * p_x - a_x * p_y
+//
+// n_a = p_x / a_x - n_b * b_x / a_x
+// n_a = (p_x - n_b * b_x) / a_x
+
+fn tokens_efficient(machine: ClawMachine) -> Option<i64> {
+    let (ax, ay) = machine.button_a;
+    let (bx, by) = machine.button_b;
+    let(px, py) = machine.prize;
+
+    if ax * by == ay * bx {
+        panic!("a and b are linearly dependent. Handle this special case!");
+    }
+
+    let nb_factor = ay * bx - ax * by;
+    let nb_rhs = ay * px - ax * py;
+
+    if nb_rhs % nb_factor != 0 {
+        return None;
+    }
+
+    let nb = nb_rhs / nb_factor;
+
+    let na_rhs_nom = px - nb * bx;
+
+    if na_rhs_nom % ax != 0 {
+        return None;
+    }
+
+    let na = na_rhs_nom / ax;
+
+    Some(3 * na + nb)
+}
+
+fn part2(data: &str) -> i64 {
+    parse(data).into_iter()
+        .map(|machine| ClawMachine{
+            prize: (machine.prize.0 + 10000000000000, machine.prize.1 + 10000000000000),
+            ..machine
+        })
+        .filter_map(tokens_efficient)
+        .sum()
 }
 
 #[cfg(test)]
@@ -96,7 +150,12 @@ Prize: X=18641, Y=10279";
     }
 
     #[test]
+    fn test_part1_efficient() {
+        assert_eq!(480, part1_efficient(TEST_INPUT));
+    }
+
+    #[test]
     fn test_part2() {
-        assert_eq!(42, part2(TEST_INPUT));
+        assert_eq!(875318608908, part2(TEST_INPUT));
     }
 }
