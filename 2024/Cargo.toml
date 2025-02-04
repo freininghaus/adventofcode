@@ -3,6 +3,10 @@ name = "adventofcode2024"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "utils"
+path = "utils/lib.rs"
+
 [[bin]]
 name = "day01"
 path = "src/day01.rs"
@@ -60,6 +64,10 @@ name = "day14"
 path = "src/day14.rs"
 
 [[bin]]
+name = "day15"
+path = "src/day15.rs"
+
+[[bin]]
 name = "day22"
 path = "src/day22.rs"
 
@@ -72,3 +80,5 @@ path = "src/day23.rs"
 [dependencies]
 itertools = "0.13.0"
 regex = { version = "1.11.1", features = [] }
+num-bigint = "0.4.6"
+
