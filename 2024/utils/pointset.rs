@@ -113,6 +113,16 @@ impl PointSet {
         }
     }
 
+    pub fn points(self: &Self) -> Vec<Point> {
+        (0..self.dimensions.height)
+            .flat_map(
+                |y| (0..self.dimensions.width)
+                    .map(move |x| Point { x, y })
+                    .filter(|p| self.contains(p))
+            )
+            .collect()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.data == BigUint::ZERO
     }

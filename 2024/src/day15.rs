@@ -1,7 +1,7 @@
 #[path = "../utils/pointset.rs"]
 mod utils;
 
-use crate::utils::{parse_point_sets, Direction, Point};
+use crate::utils::{parse_point_sets, point_sets_map, Direction, Point};
 use itertools::Itertools;
 use std::collections::HashSet;
 use utils::PointSet;
@@ -98,6 +98,17 @@ fn try_move(
     false
 }
 
+fn gps_coordinates_sum(boxes: &PointSet) -> usize {
+    (0..boxes.dimensions.height)
+        .flat_map(|y|
+            (0..boxes.dimensions.width)
+                .map(move |x| Point { x, y })
+        )
+        .filter(|p| boxes.contains(&p))
+        .map(|Point { x, y }| 100 * y + x)
+        .sum()
+}
+
 fn part1(data: &str) -> usize {
     let (
         Map { walls, mut boxes, mut robot},
@@ -108,18 +119,122 @@ fn part1(data: &str) -> usize {
         try_move(&mut robot, direction, &mut boxes, &walls);
     }
 
-    (0..walls.dimensions.height)
-        .flat_map(|y|
-            (0..walls.dimensions.width)
-                .map(move |x| Point { x, y })
-        )
-        .filter(|p| boxes.contains(&p))
-        .map(|Point { x, y }| 100 * y + x)
-        .sum()
+    gps_coordinates_sum(&boxes)
+}
+
+// The same as try_move, but for the wider boxes of part 2.
+// Note that 'boxes' contains only the left part of each box.
+fn try_move_wide(
+    object: &mut PointSet,
+    direction: Direction,
+    all_boxes: &mut PointSet,
+    walls: &PointSet,
+) -> bool {
+    let point = object.points().into_iter().next().unwrap();
+    let x = point.x;
+    let y = point.y;
+
+    let destination = object.shift(direction);
+
+    // Find out if we try to move the robot or a box
+    let is_box = !(&*object & &*all_boxes).is_empty();
+
+    // If we try to move a box, we also have to consider its right part.
+    let object_wide = if is_box {
+        &*object | &object.shift(Direction::Right)
+    } else {
+        object.clone()
+    };
+
+    let destination_wide = if is_box {
+        &destination | &destination.shift(Direction::Right)
+    } else {
+        destination.clone()
+    };
+
+    // Determine the new point(s) which we want to occupy with the object
+    let target = &destination_wide & &!&object_wide;
+
+    if !(&target & walls).is_empty() {
+        // cannot move into a wall
+        return false;
+    }
+
+    let move_box = |the_box: &PointSet, all_boxes: &mut PointSet| {
+        *all_boxes &= &!the_box;
+        *all_boxes |= &the_box.shift(direction);
+    };
+
+    if (&target & &(&*all_boxes | &all_boxes.shift(Direction::Right))).is_empty() {
+        // 'destination'' is free
+        if is_box {
+            move_box(&object, all_boxes);
+        }
+
+        *object = destination;
+        return true;
+    }
+
+    // 'target' overlaps with at least one box, but we can try to move it.
+
+    // We might have to try to move multiple boxes which are obstacles.
+    // If we can move the first one successfully, but fail at moving the second,
+    // we have to revert the changes which would have been made by the first move.
+    // Therefore, we remember the original box position.
+    let all_boxes_backup = all_boxes.clone();
+
+    let boxes_to_move = (&target | &target.shift(Direction::Left)) & &*all_boxes;
+
+    for box_to_move in boxes_to_move.points() {
+        let mut box_to_move = PointSet::from_point(&all_boxes.dimensions, &box_to_move);
+        if !try_move_wide(&mut box_to_move, direction, all_boxes, walls) {
+            // Undo any moves of boxes at target points that were checked earlier
+            *all_boxes = all_boxes_backup;
+            return false;
+        }
+    }
+
+    // the box could be moved
+    if is_box {
+        move_box(&object, all_boxes);
+    }
+
+    *object = destination;
+
+    true
 }
 
 fn part2(data: &str) -> usize {
-    0
+    let data= data.chars()
+        .map(|c| match c {
+            '#' => "##",
+            '.' => "..",
+            '@' => "@.",
+            '\n' => "\n",
+
+            // we only track the left part of the wider box for simplicity
+            'O' => "O.",
+
+            // do not touch move instructions
+            '>' => ">",
+            '<' => "<",
+            '^' => "^",
+            'v' => "v",
+
+            _ => panic!("Unexpected character in input: '{}'", c)
+        })
+        .join("");
+
+    let (
+        Map { walls, mut boxes, mut robot},
+        instructions
+    ) = parse(&data);
+
+    for direction in instructions {
+        try_move_wide(&mut robot, direction, &mut boxes, &walls);
+    }
+
+    gps_coordinates_sum(&boxes)
 }
 
 #[cfg(test)]
@@ -218,8 +333,23 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^";
         assert_eq!(10092, part1(TEST_INPUT));
     }
 
+    const TEST_INPUT_SMALL_PART2: &str = "#######
+#...#.#
+#.....#
+#..OO@#
+#..O..#
+#.....#
+#######
+
+<vv<<^^<<^^";
+
+    #[test]
+    fn debug_part2() {
+        part2(TEST_INPUT_SMALL_PART2);
+    }
+
     #[test]
     fn test_part2() {
-        //assert_eq!(42, part2(TEST_INPUT));
+        assert_eq!(9021, part2(TEST_INPUT));
     }
 }
