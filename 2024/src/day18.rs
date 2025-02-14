@@ -16,59 +16,83 @@ fn main() {
     println!("Part 2: {}", part2(&data));
 }
 
-fn corrupted_locations(fallen_bytes: &str) -> PointSet {
-    let fallen_bytes: Vec<(usize, usize)> = fallen_bytes
+fn fallen_bytes(data: &str) -> Vec<(usize, usize)> {
+    data
         .lines()
         .map(
             |line|
-            line.split(',')
-                .map(str::parse)
-                .map(Result::unwrap)
-                .collect_tuple()
-                .unwrap()
+                line.split(',')
+                    .map(str::parse)
+                    .map(Result::unwrap)
+                    .collect_tuple()
+                    .unwrap()
         )
-        .collect();
+        .collect()
+}
 
-    // Find out if we are on the 71x71 grid or on the 7x7 test grid
-    let test_grid = fallen_bytes.iter()
-        .all(|(x, y)| *x <= 6 && *y <= 6);
+// Find out if we are on the 71x71 grid or on the 7x7 test grid
+fn is_test_grid(positions: &Vec<(usize, usize)>) -> bool {
+    positions.iter().all(
+        |(x, y)| *x <= 6 && *y <= 6
+    )
+}
 
-    let size = if test_grid { 7 } else { 71 };
+fn grid_dimensions(positions: &Vec<(usize, usize)>) -> Dimensions {
+    let size = if is_test_grid(positions) {
+        7
+    } else {
+        71
+    };
 
-    // We add a blocked column at the right to prevent wrapping
-    let dimensions = Dimensions{ width: size + 1, height: size};
+    Dimensions{ width: size + 1, height: size}
+}
 
-    let blocked_column = PointSet::from_points(
+// We add a blocked column at the right to prevent wrapping
+fn blocked_right_column(positions: &Vec<(usize, usize)>) -> PointSet {
+    let dimensions = grid_dimensions(positions);
+
+    PointSet::from_points(
         &dimensions,
-        (0..size)
-            .map(|y| Point { x: size, y })
-    );
+        (0..dimensions.height)
+            .map(|y| Point { x: dimensions.width - 1, y })
+    )
+}
+
+fn start_and_exit(dimensions: &Dimensions) -> (PointSet, PointSet) {
+    (
+        PointSet::from_point(
+            &dimensions,
+            &Point { x: 0, y: 0 }
+        ),
+        PointSet::from_point(
+            &dimensions,
+            &Point {
+                x: dimensions.width - 2,  // ignore the blocked rightmost column
+                y: dimensions.height - 1
+            }
+        )
+    )
+}
+
+// In part 1, we take only some of the falled bytes into account
+fn corrupted_locations(data: &str) -> PointSet {
+    let fallen_bytes = fallen_bytes(data);
+
+    let blocked_column = blocked_right_column(&fallen_bytes);
 
     &PointSet::from_points(
-        &dimensions,
-        fallen_bytes.into_iter()
-            .take(if test_grid { 12 } else { 1024 })
-            .map(|(x, y)| Point { x, y })
+        &blocked_column.dimensions,
+        fallen_bytes.iter()
+            .take(if is_test_grid(&fallen_bytes) { 12 } else { 1024 })
+            .map(|(x, y)| Point { x: *x, y: *y })
     ) | &blocked_column
 }
 
 fn part1(data: &str) -> usize {
     let blocked = corrupted_locations(data);
-
-    let start = PointSet::from_point(
-        &blocked.dimensions,
-        &Point { x: 0, y: 0 }
-    );
-
-    // Do not use the width here - note that we have added a blocked column at the right edge.
-    let size = blocked.dimensions.height;
-
-    let exit = PointSet::from_point(
-        &blocked.dimensions,
-        &Point { x: size - 1, y: size - 1 }
-    );
-
     let safe = !&blocked;
+
+    let (start, exit) = start_and_exit(&blocked.dimensions);
 
     (1usize..).scan(start, |visited, step| {
         *visited |= &(visited.shake() & &safe);
