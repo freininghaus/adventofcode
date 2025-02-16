@@ -16,7 +16,7 @@ fn main() {
     println!("Part 2: {}", part2(&data));
 }
 
-fn fallen_bytes(data: &str) -> Vec<(usize, usize)> {
+fn fallen_bytes(data: &str) -> Vec<Point> {
     data
         .lines()
         .map(
@@ -24,20 +24,21 @@ fn fallen_bytes(data: &str) -> Vec<(usize, usize)> {
                 line.split(',')
                     .map(str::parse)
                     .map(Result::unwrap)
-                    .collect_tuple()
+                    .collect_tuple::<(usize, usize)>()
                     .unwrap()
         )
+        .map(|(x, y)| Point { x, y })
         .collect()
 }
 
 // Find out if we are on the 71x71 grid or on the 7x7 test grid
-fn is_test_grid(positions: &Vec<(usize, usize)>) -> bool {
+fn is_test_grid(positions: &Vec<Point>) -> bool {
     positions.iter().all(
-        |(x, y)| *x <= 6 && *y <= 6
+        |Point{x, y}| *x <= 6 && *y <= 6
     )
 }
 
-fn grid_dimensions(positions: &Vec<(usize, usize)>) -> Dimensions {
+fn grid_dimensions(positions: &Vec<Point>) -> Dimensions {
     let size = if is_test_grid(positions) {
         7
     } else {
@@ -48,7 +49,7 @@ fn grid_dimensions(positions: &Vec<(usize, usize)>) -> Dimensions {
 }
 
 // We add a blocked column at the right to prevent wrapping
-fn blocked_right_column(positions: &Vec<(usize, usize)>) -> PointSet {
+fn blocked_right_column(positions: &Vec<Point>) -> PointSet {
     let dimensions = grid_dimensions(positions);
 
     PointSet::from_points(
@@ -80,11 +81,10 @@ fn corrupted_locations(data: &str) -> PointSet {
 
     let blocked_column = blocked_right_column(&fallen_bytes);
 
-    &PointSet::from_points(
+    &PointSet::from_point_refs(
         &blocked_column.dimensions,
         fallen_bytes.iter()
             .take(if is_test_grid(&fallen_bytes) { 12 } else { 1024 })
-            .map(|(x, y)| Point { x: *x, y: *y })
     ) | &blocked_column
 }
 
