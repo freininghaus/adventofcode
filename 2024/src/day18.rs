@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use crate::utils::{point_sets_map, Dimensions, Point, PointSet};
+use crate::utils::{Dimensions, Point, PointSet};
 
 #[path = "../utils/pointset.rs"]
 mod utils;
@@ -113,8 +113,46 @@ fn part1(data: &str) -> usize {
         .unwrap()
 }
 
-fn part2(data: &str) -> usize {
-    0
+fn exit_reachable(blocked: &PointSet) -> bool {
+    let (start, exit) = start_and_exit(&blocked.dimensions);
+
+    (0..)
+        .scan(start, |reachable, _| {
+            let new_reachable = &*reachable | &(&reachable.shake() & &!blocked);
+
+            if new_reachable == *reachable {
+                // Cannot reach more points
+                None
+            } else {
+                *reachable = new_reachable;
+                Some(!((&exit & &reachable).is_empty()))
+            }
+        })
+        .last()
+        .unwrap()
+}
+
+fn part2(data: &str) -> String {
+    let fallen_bytes = fallen_bytes(data);
+
+    let blocked_column = blocked_right_column(&fallen_bytes);
+
+    let first_blocking_byte = (0..fallen_bytes.len()).collect::<Vec<_>>()
+        .partition_point(
+            |byte_index| {
+                exit_reachable(&(
+                    &blocked_column |
+                    &PointSet::from_point_refs(
+                        &blocked_column.dimensions,
+                        &fallen_bytes[..byte_index + 1]
+                    )
+                ))
+            }
+        );
+
+    let Point {x, y} = fallen_bytes[first_blocking_byte];
+
+    format!("{},{}", x, y)
 }
 
 #[cfg(test)]
@@ -154,6 +192,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(42, part2(TEST_INPUT));
+        assert_eq!("6,1", part2(TEST_INPUT));
     }
 }
