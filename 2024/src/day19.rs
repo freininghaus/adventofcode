@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 fn input() -> String {
     std::fs::read_to_string("input/day19.txt").expect("Could not read file")
@@ -85,8 +85,36 @@ fn part1(data: &str) -> usize {
         .count()
 }
 
-fn part2(data: &str) -> usize {
+fn ways_to_make_design(design: &Vec<u8>, towels: &Vec<Vec<u8>>) -> usize {
+    let mut prefix_lengths = BTreeMap::from([(0, 1)]);
+
+    while !prefix_lengths.is_empty() {
+        let (smallest_prefix_length, ways) = prefix_lengths.pop_first().unwrap();
+        if smallest_prefix_length == design.len() {
+            return ways;
+        }
+
+        let suffix = &design[smallest_prefix_length..];
+
+        for t in towels {
+            if suffix.starts_with(t.as_slice()) {
+                prefix_lengths.entry(smallest_prefix_length + t.len())
+                    .and_modify(|result| *result += ways)
+                    .or_insert(ways);
+            }
+        }
+    }
+
     0
+}
+
+fn part2(data: &str) -> usize {
+    let (towels, designs) = parse(data);
+
+    designs
+        .iter()
+        .map(|design| ways_to_make_design(&design, &towels))
+        .sum()
 }
 
 #[cfg(test)]
