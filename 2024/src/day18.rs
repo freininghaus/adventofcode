@@ -118,7 +118,7 @@ fn exit_reachable(blocked: &PointSet) -> bool {
 
     (0..)
         .scan(start, |reachable, _| {
-            let new_reachable = &*reachable | &(&reachable.shake() & &!blocked);
+            let new_reachable = &reachable.shake() & &!blocked;
 
             if new_reachable == *reachable {
                 // Cannot reach more points

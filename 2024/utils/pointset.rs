@@ -161,7 +161,8 @@ impl PointSet {
     }
 
     pub fn shake(&self) -> Self {
-        &self.shift(Direction::Left) |
+        self |
+            &self.shift(Direction::Left) |
             &self.shift(Direction::Right) |
             &self.shift(Direction::Up) |
             &self.shift(Direction::Down)
