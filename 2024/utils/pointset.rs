@@ -2,7 +2,7 @@ use itertools::Itertools;
 use num_bigint::BigUint;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
-use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
+use std::ops::{Add, BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Dimensions {
@@ -26,7 +26,7 @@ impl Dimensions {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub struct Point {
     pub x: usize,
     pub y: usize,
@@ -44,6 +44,21 @@ pub enum Direction {
     Right,
     Up,
     Down,
+}
+
+impl Add<Direction> for Point {
+    type Output = Point;
+
+    fn add(self, rhs: Direction) -> Self::Output {
+        let Point{x, y} = self;
+
+        match rhs {
+            Direction::Left => Point { x: x - 1, y: y },
+            Direction::Right => Point { x: x + 1, y: y },
+            Direction::Up => Point { x: x, y: y - 1 },
+            Direction::Down => Point { x: x, y: y + 1 },
+        }
+    }
 }
 
 impl TryFrom<char> for Direction {
@@ -113,6 +128,7 @@ impl PointSet {
         }
     }
 
+    /*
     pub fn points(self: &Self) -> Vec<Point> {
         (0..self.dimensions.height)
             .flat_map(
@@ -120,6 +136,18 @@ impl PointSet {
                     .map(move |x| Point { x, y })
                     .filter(|p| self.contains(p))
             )
+            .collect()
+    }
+    */
+
+    pub fn points(self: &Self) -> Vec<Point> {
+        (0..self.dimensions.width * self.dimensions.height)
+            .filter(|n| &self.data & BigUint::from(1u32) << n != BigUint::ZERO)
+            .map(|n| (
+                usize::try_from(&n % self.dimensions.width).unwrap(),
+                usize::try_from(n / self.dimensions.width).unwrap()
+            ))
+            .map(|(x, y)| Point{x, y})
             .collect()
     }
 
