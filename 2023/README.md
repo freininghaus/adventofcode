@@ -30,4 +30,11 @@
     treb7uchet";
     ```
 *   `&[u8]` literals can be built with `b"foo"`.
-*    Split a string slice into lines with `.lines()`.
+*   Split a string slice into lines with `.lines()`.
+
+### Day 7 (WIP)
+*   Parse numbers from `&[u8]` with `nom`'s [`parse_to()`](https://docs.rs/nom/latest/nom/trait.ParseTo.html#tymethod.parse_to)
+    method of the `ParseTo` trait. This will just use `str::parse` after decoding from utf-8.
+*   Cartesian product of arbitrary iterators: [`iproduct!`](https://docs.rs/itertools/0.12.0/itertools/macro.iproduct.html) macro from `itertools`
+*   Create an array from a slice: https://stackoverflow.com/a/50080940
+*   Build, e.g., strings and vecs by concatenation from iterators: https://docs.rs/itertools/latest/itertools/fn.concat.html

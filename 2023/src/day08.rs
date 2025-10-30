@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use itertools::Itertools;
 use regex::Regex;
 
@@ -32,11 +32,77 @@ fn part1(lines: &str) -> usize {
         .count()
 }
 
-fn part2(_lines: &str) -> u32 {
+fn part2_naive(lines: &str) -> usize {
+    // This works fine for the example, but runs far too long for the real input, as I expected :-(
+
+    let NavigationInput { instructions, nodes } = parse(lines);
+
+    let initial_state: Vec<&str> = nodes.keys()
+        .filter(|node| node.ends_with('A'))
+        .map(|&node| node)
+        .collect();
+
+    instructions.iter().cycle()
+        .scan(
+            initial_state,
+            |state, direction| {
+                for node in state.iter_mut() {
+                    let (left, right) = nodes.get(*node).unwrap();
+                    *node = match direction {
+                        Direction::Left => left,
+                        Direction::Right => right
+                    };
+                }
+                Some(state.iter()
+                    .filter(|node| !node.ends_with('Z'))
+                    .count())
+            })
+        .take_while_inclusive(|unfinished_node_count| *unfinished_node_count > 0)
+        .count()
+}
+
+fn part2(lines: &str) -> usize {
     0
 }
 
+fn analyze_cycle(start_node: &str, navigation_input: &NavigationInput) -> Cycle {
+    let NavigationInput { instructions, nodes } = navigation_input;
+
+    // map (node, instruction index) to absolute index since start
+    let mut seen: HashMap<(&str, usize), usize> = HashMap::new();
+    let mut index = 0usize;
+    let mut node = start_node;
+    let mut instruction_index = 0usize;
+
+    loop {
+        seen.insert((node, instruction_index), index);
+        let (left, right) = nodes.get(node).unwrap();
+        let direction = instructions[instruction_index];
+        match direction {
+            Direction::Left => node = left,
+            Direction::Right => node = right
+        }
+        instruction_index = (instruction_index + 1) % instructions.len();
+        index += 1;
+
+        if let Some(last_index) = seen.get(&(node, instruction_index)) {
+            return Cycle {
+                start: *last_index,
+                length: index - *last_index,
+                z_indices: vec![]
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
+struct Cycle {
+    start: usize,
+    length: usize,
+    z_indices: Vec<usize>
+}
+
+#[derive(Debug, Clone, Copy)]
 enum Direction {
     Left,
     Right
@@ -63,7 +129,7 @@ fn parse(lines: &str) -> NavigationInput {
     assert_eq!(lines.next(), Some(""));
 
     // after we did so much with nom this year, maybe it's time to practice regular expressions again.
-    let re = Regex::new("([A-Z]{3}) = \\(([A-Z]{3}), ([A-Z]{3})\\)").unwrap();
+    let re = Regex::new("([A-Z0-9]{3}) = \\(([A-Z0-9]{3}), ([A-Z0-9]{3})\\)").unwrap();
 
     let nodes = lines
         .map(|line| {
@@ -107,8 +173,24 @@ ZZZ = (ZZZ, ZZZ)";
         assert_eq!(6, part1(TEST_INPUT_2));
     }
 
+    const TEST_INPUT_3: &str = "LR
+
+11A = (11B, XXX)
+11B = (XXX, 11Z)
+11Z = (11B, XXX)
+22A = (22B, XXX)
+22B = (22C, 22C)
+22C = (22Z, 22Z)
+22Z = (22B, 22B)
+XXX = (XXX, XXX)";
+
     #[test]
     fn test_part2() {
-        assert_eq!(42, part2(TEST_INPUT_1));
+        assert_eq!(6, part2_naive(TEST_INPUT_3));
+    }
+
+    #[test]
+    fn test() {
+        println!("{:?}", analyze_cycle("11Z", &parse(TEST_INPUT_3)));
     }
 }
