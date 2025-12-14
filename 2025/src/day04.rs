@@ -24,8 +24,19 @@ fn part1(lines: &str) -> usize {
     .count()
 }
 
-fn part2(lines: &str) -> u64 {
-    0
+fn part2(lines: &str) -> usize {
+    (0..).scan(parse(lines), |roll_positions, _| {
+        let removable_roll_positions =  accessible_for_forklift(roll_positions);
+        if removable_roll_positions.is_empty() {
+            return None;
+        }
+
+        for pos in &removable_roll_positions {
+            roll_positions.remove(&pos);
+        }
+
+        Some(removable_roll_positions.len() as usize)
+    }).sum()
 }
 
 fn neighbors(&(x, y): &(i32, i32)) -> Vec<(i32, i32)> {
@@ -36,6 +47,16 @@ fn neighbors(&(x, y): &(i32, i32)) -> Vec<(i32, i32)> {
             move |dy| (x + dx, y + dy)
         )
     ).collect()
+}
+
+fn accessible_for_forklift(roll_positions: &HashSet<(i32, i32)>) -> HashSet<(i32, i32)> {
+    roll_positions.iter()
+        .filter(|pos|
+            neighbors(pos).iter()
+                .filter(|neighbor| roll_positions.contains(neighbor))
+                .count() < 4)
+        .map(|pos| pos.clone())
+        .collect()
 }
 
 fn parse(lines: &str) -> HashSet<(i32, i32)> {
@@ -71,6 +92,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(3121910778619, part2(TEST_INPUT));
+        assert_eq!(43, part2(TEST_INPUT));
     }
 }
