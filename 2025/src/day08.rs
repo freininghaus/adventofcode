@@ -14,41 +14,75 @@ fn main() {
 }
 
 fn part1(lines: &str, connections: usize) -> usize {
+    connect_boxes(lines, connections).0
+        .iter()
+        .map(|boxes| boxes.len())
+        .sorted_by(|a, b| b.cmp(a))
+        .take(3)
+        .product()
+}
+
+fn part2(lines: &str) -> usize {
+    0
+}
+
+fn connect_boxes(
+    lines: &str,
+    max_connections: usize,
+) -> (
+    Vec<HashSet<usize>>,
+    Option<((i64, i64, i64), (i64, i64, i64))>,
+) {
     let positions = parse(lines);
-    let sorted_squared_distances: Vec<(u64, (usize, usize))> = positions.iter().enumerate()
+    let sorted_squared_distances: Vec<(u64, (usize, usize))> = positions
+        .iter()
+        .enumerate()
         .flat_map(|(index1, (x1, y1, z1))| {
-            positions.iter().take(index1).enumerate()
-                .map(move |(index2, (x2, y2, z2))|
-                    (((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2) + (z1 - z2) * (z1 - z2)) as u64,
-                     (index1, index2))
-                )
+            positions
+                .iter()
+                .take(index1)
+                .enumerate()
+                .map(move |(index2, (x2, y2, z2))| {
+                    (
+                        ((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2) + (z1 - z2) * (z1 - z2))
+                            as u64,
+                        (index1, index2),
+                    )
+                })
         })
         .sorted()
         .collect();
 
     let mut circuit_id_for_box_index: Vec<Option<usize>> = vec![None; positions.len()];
-    let mut box_indices_in_circuit_by_id : Vec<HashSet<usize>> = Vec::new();
+    let mut box_indices_in_circuit_by_id: Vec<HashSet<usize>> = Vec::new();
+    let mut last_connection: Option<((i64, i64, i64), (i64, i64, i64))> = None;
 
-    for (_, (box1, box2)) in sorted_squared_distances.into_iter().take(connections) {
+    for (_, (box1, box2)) in sorted_squared_distances.into_iter().take(max_connections) {
+        last_connection = Some((positions[box1].clone(), positions[box2].clone()));
+
         if let Some(circuit1) = circuit_id_for_box_index[box1]
-            && circuit_id_for_box_index[box2].is_none() {
+            && circuit_id_for_box_index[box2].is_none()
+        {
             // Add single box 2 to circuit of box 1
             circuit_id_for_box_index[box2] = Some(circuit1);
             box_indices_in_circuit_by_id[circuit1].insert(box2);
         } else if let Some(circuit2) = circuit_id_for_box_index[box2]
-            && circuit_id_for_box_index[box1].is_none() {
+            && circuit_id_for_box_index[box1].is_none()
+        {
             // Add single box 1 to circuit of box 2
             circuit_id_for_box_index[box1] = Some(circuit2);
             box_indices_in_circuit_by_id[circuit2].insert(box1);
         } else if circuit_id_for_box_index[box1].is_none()
-            && circuit_id_for_box_index[box2].is_none() {
+            && circuit_id_for_box_index[box2].is_none()
+        {
             // Build new circuit out of box 1 and box 2
             let new_circuit_id = box_indices_in_circuit_by_id.len();
             circuit_id_for_box_index[box1] = Some(new_circuit_id);
             circuit_id_for_box_index[box2] = Some(new_circuit_id);
             box_indices_in_circuit_by_id.push(HashSet::from([box1, box2]));
         } else if let Some(circuit1) = circuit_id_for_box_index[box1]
-            && let Some(circuit2) = circuit_id_for_box_index[box2] {
+            && let Some(circuit2) = circuit_id_for_box_index[box2]
+        {
             // Both boxes are part of a circuit already
             if circuit1 == circuit2 {
                 // Both boxes are part of the same circuit
@@ -65,24 +99,19 @@ fn part1(lines: &str, connections: usize) -> usize {
         }
     }
 
-    box_indices_in_circuit_by_id.iter()
-        .map(|boxes| boxes.len())
-        .sorted_by(|a, b| b.cmp(a))
-        .take(3)
-        .product()
-}
-
-fn part2(lines: &str) -> usize {
-    0
+    (box_indices_in_circuit_by_id, last_connection)
 }
 
 fn parse(lines: &str) -> Vec<(i64, i64, i64)> {
-    lines.lines()
-        .map(|line|
+    lines
+        .lines()
+        .map(|line| {
             line.split(",")
                 .map(str::parse)
                 .map(Result::unwrap)
-                .collect_tuple().unwrap())
+                .collect_tuple()
+                .unwrap()
+        })
         .collect()
 }
 
