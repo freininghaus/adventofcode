@@ -22,8 +22,14 @@ fn part1(lines: &str, connections: usize) -> usize {
         .product()
 }
 
-fn part2(lines: &str) -> usize {
-    0
+fn part2(lines: &str) -> i64 {
+    let box_count = lines.lines().count();
+
+    if let Some((last_box_1, last_box_2)) = connect_boxes(lines, box_count * box_count).1 {
+        last_box_1.0 * last_box_2.0
+    } else {
+        panic!("No boxes found");
+    }
 }
 
 fn connect_boxes(
@@ -58,8 +64,6 @@ fn connect_boxes(
     let mut last_connection: Option<((i64, i64, i64), (i64, i64, i64))> = None;
 
     for (_, (box1, box2)) in sorted_squared_distances.into_iter().take(max_connections) {
-        last_connection = Some((positions[box1].clone(), positions[box2].clone()));
-
         if let Some(circuit1) = circuit_id_for_box_index[box1]
             && circuit_id_for_box_index[box2].is_none()
         {
@@ -80,8 +84,8 @@ fn connect_boxes(
             circuit_id_for_box_index[box1] = Some(new_circuit_id);
             circuit_id_for_box_index[box2] = Some(new_circuit_id);
             box_indices_in_circuit_by_id.push(HashSet::from([box1, box2]));
-        } else if let Some(circuit1) = circuit_id_for_box_index[box1]
-            && let Some(circuit2) = circuit_id_for_box_index[box2]
+        } else if let Some(mut circuit1) = circuit_id_for_box_index[box1]
+            && let Some(mut circuit2) = circuit_id_for_box_index[box2]
         {
             // Both boxes are part of a circuit already
             if circuit1 == circuit2 {
@@ -89,13 +93,25 @@ fn connect_boxes(
                 continue;
             }
 
-            // Merge the circuits that box 1 and box 2 are part of
+            // Merge the circuits that box 1 and box 2 are part of.
+            // Make sure that the circuit with the lower index persists, such that the single final
+            // circuit will be the one with index zero.
+            if circuit2 < circuit1 {
+                (circuit1, circuit2) = (circuit2, circuit1);
+            }
+
             for box_index in box_indices_in_circuit_by_id[circuit2].clone() {
                 circuit_id_for_box_index[box_index] = Some(circuit1);
                 box_indices_in_circuit_by_id[circuit1].insert(box_index);
             }
 
             box_indices_in_circuit_by_id[circuit2].clear();
+        }
+
+        if box_indices_in_circuit_by_id.iter().next().unwrap().len() == positions.len() {
+            // All boxes are connected in a single circuit
+            last_connection = Some((positions[box1].clone(), positions[box2].clone()));
+            break;
         }
     }
 
@@ -147,6 +163,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(40, part2(TEST_INPUT));
+        assert_eq!(25272, part2(TEST_INPUT));
     }
 }
